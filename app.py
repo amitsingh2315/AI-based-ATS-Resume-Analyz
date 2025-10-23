@@ -43,39 +43,40 @@ def get_gemini_response(input_text, pdf_content, prompt):
 
 def input_pdf_setup(uploaded_file):
     if uploaded_file is not None:
-        ##Convert pdf to image
         try:
-            # Try with poppler path first
-            images=pdf2image.convert_from_bytes(uploaded_file.read(),
-            poppler_path=r"C:\poppler-25.07.0\Library\bin")
-        except Exception as e:
-            st.error(f"Error with poppler path: {e}")
-            try:
-                # Try without poppler path (if poppler is in system PATH)
-                images=pdf2image.convert_from_bytes(uploaded_file.read())
-            except Exception as e2:
-                st.error(f"Error without poppler path: {e2}")
-                st.error("Please ensure Poppler is installed and accessible")
+            # Read the file bytes once and use them
+            pdf_bytes = uploaded_file.read()
+            
+            # When deployed on Render (after Step 1), this will work
+            images = pdf2image.convert_from_bytes(pdf_bytes)
+            
+            # Check if images were created
+            if not images:
+                st.error("Could not convert PDF to image. The file might be corrupted or empty.")
                 return None
+                
+            first_page = images[0]
+
+            # Convert to bytes
+            img_byte_arr = io.BytesIO()
+            first_page.save(img_byte_arr, format='JPEG')
+            img_byte_arr = img_byte_arr.getvalue()
+
+            pdf_parts = [
+                {
+                    "mime_type": "image/jpeg",
+                    "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
+                }
+            ]
+            return pdf_parts
         
-        first_page=images[0]
-
-
-        # Convert to bytes
-        img_byte_arr = io.BytesIO()
-        first_page.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-
-        pdf_parts = [
-            {
-                "mime_type": "image/jpeg",
-                "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
-            }
-        ]
-        return pdf_parts
+        except Exception as e:
+            st.error(f"Error processing PDF: {e}")
+            st.error("Please ensure Poppler is installed on the server and the PDF file is not corrupted.")
+            return None
     else:
         raise FileNotFoundError("No file uploaded")
-
+            
 ## Streamlit App
 
 st.set_page_config(page_title="ATS Resume EXpert")
