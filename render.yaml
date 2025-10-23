@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ats-resume-expert # Aap yahan koi bhi naam de sakte hain
+    env: python
+    plan: free
+    buildCommand: "./build.sh"
+    startCommand: "streamlit run app.py"
+    systemDependencies:
+      - name: poppler-utils
